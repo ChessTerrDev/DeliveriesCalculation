@@ -1,0 +1,22 @@
+{
+    "name": "roman/deliveries-calculation",
+    "autoload": {
+        "psr-4": {
+            "DeliveriesCalculation\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Roman",
+            "email": "chess.terr.dev@yandex.ru"
+        }
+    ],
+    "require": {
+        "ext-soap": "*",
+        "antistress-store/cdek-sdk-v2": ">=v1.1.1",
+        "lapaygroup/russianpost": ">=0.9.19",
+        "hflabs/dadata": ">=22.3.0",
+        "wildtuna/boxberry-sdk": ">=0.8.7",
+        "monolog/monolog": ">=2.7.0"
+    }
+}
