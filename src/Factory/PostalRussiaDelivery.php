@@ -3,14 +3,13 @@
 namespace DeliveriesCalculation\Factory;
 
 use LapayGroup\RussianPost\{Providers\OtpravkaApi, ParcelInfo};
-use DeliveriesCalculation\{
-    Constants,
+use DeliveriesCalculation\{Constants,
     Exception\DeliveryException,
     Entity\Delivery,
-    Entity\DeliveryResponse
-};
+    Entity\DeliveryResponse,
+    Logger\Log};
 
-class PostalRussiaDelivery implements DeliveryInterface
+class PostalRussiaDelivery extends AbstractDelivery implements DeliveryInterface
 {
     private OtpravkaApi $client;
 
@@ -38,22 +37,20 @@ class PostalRussiaDelivery implements DeliveryInterface
     }
 
     /**
-     * При удачном исходе возвращает стоимость доставки
-     * @param bool $typeReturnValue тип возвращаемого значения:
-     * bool false = Array |
-     * bool true = DeliveryResponse (по умолчанию)
-     * @return array | object | null
+     * При удачном исходе получает стоимость доставки
+     * @return $this
      * @throws \DeliveriesCalculation\Exception\DeliveryException
+     * @throws \LapayGroup\RussianPost\Exceptions\RussianPostException
      */
-    public function getDeliveryCalculation(bool $typeReturnValue = true): array | DeliveryResponse | null
+    public function calculation(): PostalRussiaDelivery
     {
-        if (!$this->delivery->isActive()) return null;
-        if (!$this->delivery->getFromPostalCode())
-            throw new DeliveryException(DeliveryException::getErrorMessage('NOT_FROM_POINT', Constants::POSTAL_DELIVERY['name']));
-        if (!$this->delivery->getToPostalCode())
-            throw new DeliveryException(DeliveryException::getErrorMessage('NOT_TO_POINT', Constants::POSTAL_DELIVERY['name']));
-        if (!$this->delivery->getDimension('weight'))
-            throw new DeliveryException(DeliveryException::getErrorMessage('NOT_WEIGHT', Constants::POSTAL_DELIVERY['name']));
+        if (!$this->delivery->isActive()) {
+            (new Log($this::class))->addLogInfo(
+                Constants::POSTAL_DELIVERY['name'] . ': ' . Constants::LOG_MESSAGE['NO_ACTIVE']
+            );
+            return $this;
+        }
+        $this->checkParameters();
 
         $parcelInfo = new ParcelInfo();
         $parcelInfo->setIndexFrom($this->delivery->getFromPostalCode()); // Индекс пункта сдачи из функции $OtpravkaApi->shippingPoints()
@@ -65,24 +62,77 @@ class PostalRussiaDelivery implements DeliveryInterface
 
         $result =  $this->client->getDeliveryTariff($parcelInfo);
 
-        if ($typeReturnValue) {
-            return new DeliveryResponse(
-                [
-                    'name' => Constants::POSTAL_DELIVERY['name'],
-                    'description' => Constants::POSTAL_DELIVERY['description'],
-                    'delivery_sum' => round($result->getTotalRate()/100),
-                    'period_min' => $result->getDeliveryMinDays(),
-                    'period_max' => $result->getDeliveryMaxDays()
-                ]
+        if (empty($result)) {
+            (new Log($this::class))->addLogInfo(
+                Constants::POSTAL_DELIVERY['name'] . ': ' . Constants::LOG_MESSAGE['NO_RESULT']
             );
         } else {
-            return [
+            $this->setResult($result);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Проверяет наличие необходимых параметров
+     * @return void
+     * @throws \DeliveriesCalculation\Exception\DeliveryException
+     */
+    private function checkParameters(): void
+    {
+        if (!$this->delivery->getFromPostalCode()) {
+            (new Log($this::class))->addLogError(
+                Constants::POSTAL_DELIVERY['name'] . ': ' . Constants::ERRORS['NOT_FROM_POINT']
+            );
+            throw new DeliveryException(DeliveryException::getErrorMessage('NOT_FROM_POINT', Constants::POSTAL_DELIVERY['name']));
+        }
+        if (!$this->delivery->getToPostalCode()) {
+            (new Log($this::class))->addLogError(
+                Constants::POSTAL_DELIVERY['name'] . ': ' . Constants::ERRORS['NOT_FROM_POINT']
+            );
+            throw new DeliveryException(DeliveryException::getErrorMessage('NOT_TO_POINT', Constants::POSTAL_DELIVERY['name']));
+        }
+        if (!$this->delivery->getDimension('weight')) {
+            (new Log($this::class))->addLogError(
+                Constants::POSTAL_DELIVERY['name'] . ': ' . Constants::ERRORS['NOT_FROM_POINT']
+            );
+            throw new DeliveryException(DeliveryException::getErrorMessage('NOT_WEIGHT', Constants::POSTAL_DELIVERY['name']));
+        }
+    }
+
+    /**
+     * Ставит результат расчета стоимости доставки
+     * @param array|object $result
+     * @return void
+     */
+    public function setResult(array|object $result): void
+    {
+        $this->result = new DeliveryResponse(
+            [
                 'name' => Constants::POSTAL_DELIVERY['name'],
                 'description' => Constants::POSTAL_DELIVERY['description'],
-                'delivery_sum' => round($result->getTotalRate()/100),
-                'period_min' => $result->getDeliveryMinDays(),
-                'period_max' => $result->getDeliveryMaxDays()
-            ];
-        }
+                'deliverySum' => round($result->getTotalRate()/100),
+                'periodMin' => $result->getDeliveryMinDays(),
+                'periodMax' => $result->getDeliveryMaxDays()
+            ]
+        );
+    }
+
+    /**
+     * Возвращает результат в виде объекта DeliveryResponse
+     * @return \DeliveriesCalculation\Entity\DeliveryResponse|null
+     */
+    public function getResult(): ?DeliveryResponse
+    {
+        return $this->result;
+    }
+
+    /**
+     * Возвращает результат в виде массива
+     * @return array|null
+     */
+    public function getResultToArray(): ?array
+    {
+        return $this->parseField($this->result);
     }
 }

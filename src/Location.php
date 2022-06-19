@@ -14,10 +14,14 @@ class Location
         $this->ip = $ip;
         if (empty($this->ip) && !empty($_SERVER['REMOTE_ADDR'])) $this->ip = $_SERVER['REMOTE_ADDR'];
 
-        if (!empty($this->ip)) {
+        $this->geoData = Session::getFromSession('GEO_DATA');
+
+        if (!empty($this->ip) && $this->geoData == null) {
             $this->geoData = $this->getGeodataByDadata($ip);
             empty($this->geoData) && $this->geoData = $this->getGeodataByIpApi($ip);
             //empty($this->geoData) && $this->geoData = $this->getGeodataByGeoIp2($ip);
+
+            if ($this->geoData) Session::addToSession($this->geoData, 'GEO_DATA');
         }
     }
 

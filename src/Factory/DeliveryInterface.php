@@ -12,11 +12,27 @@ interface DeliveryInterface
     public function __construct(Delivery $delivery);
 
     /**
-     * При удачном исходе возвращает стоимость доставки
-     * @param bool $typeReturnValue тип возвращаемого значения:
-     * bool false = Array |
-     * bool true = DeliveryResponse (по умолчанию)
-     * @return array | object | null
+     * При удачном исходе получает стоимость доставки
+     * @return DeliveryInterface
      */
-    public function getDeliveryCalculation(bool $typeReturnValue = true): array | DeliveryResponse | null;
+    public function calculation(): DeliveryInterface;
+
+    /**
+     * Ставит результат расчета стоимости доставки
+     * @param array|object $result
+     * @return void
+     */
+    public function setResult(array|object $result): void;
+
+    /**
+     * Возвращает результат в виде объекта DeliveryResponse
+     * @return \DeliveriesCalculation\Entity\DeliveryResponse|null
+     */
+    public function getResult();
+
+    /**
+     * Возвращает результат в виде массива
+     * @return array|null
+     */
+    public function getResultToArray(): ?array;
 }
