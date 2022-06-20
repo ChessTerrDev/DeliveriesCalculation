@@ -1,19 +1,24 @@
 <?php
 
-namespace DeliveriesCalculation\Entity;
+namespace DeliveriesCalculation\Entity\Request;
 
-class Delivery
+use DeliveriesCalculation\Entity\AbstractDeliveryEntity;
+
+class Delivery  extends AbstractDeliveryEntity
 {
+    private string $name;
+    private string $description;
+
     private bool $active;
-    private string $account;
-    private string $secure;
-    private string $token;
-    private string $key;
+    private ?string $account = null;
+    private ?string $secure = null;
+    private ?string $token = null;
+    private ?string $key = null;
 
     private string $type_client;
 
     /**
-     * @var \DeliveriesCalculation\Entity\Dimensions Информация о габаритах.
+     * @var \DeliveriesCalculation\Entity\Request\Dimensions Информация о габаритах.
      */
     private Dimensions $dimensions;
 
@@ -21,6 +26,11 @@ class Delivery
      * @var float | null Общая стоимость содержимого коробки в рублях.
      */
     private ?float $packagePrice = null;
+
+    /**
+     * @var int
+     */
+    private int $count = 1;
 
     /**
      * @var float | null Объявленная ценность содержимого коробки.
@@ -56,6 +66,42 @@ class Delivery
     }
 
     /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    /**
+     * @param string $name
+     * @return Delivery
+     */
+    public function setName(string $name): Delivery
+    {
+        $this->name = $name;
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getDescription(): string
+    {
+        return $this->description;
+    }
+
+    /**
+     * @param string $description
+     * @return Delivery
+     */
+    public function setDescription(string $description): Delivery
+    {
+        $this->description = $description;
+        return $this;
+    }
+
+    /**
      * @return bool
      */
     public function isActive(): bool
@@ -74,9 +120,9 @@ class Delivery
     }
 
     /**
-     * @return string
+     * @return ?string
      */
-    public function getAccount(): string
+    public function getAccount(): ?string
     {
         return $this->account;
     }
@@ -92,9 +138,9 @@ class Delivery
     }
 
     /**
-     * @return string
+     * @return ?string
      */
-    public function getSecure(): string
+    public function getSecure(): ?string
     {
         return $this->secure;
     }
@@ -110,9 +156,9 @@ class Delivery
     }
 
     /**
-     * @return string
+     * @return ?string
      */
-    public function getToken(): string
+    public function getToken(): ?string
     {
         return $this->token;
     }
@@ -128,9 +174,9 @@ class Delivery
     }
 
     /**
-     * @return string
+     * @return ?string
      */
-    public function getKey(): string
+    public function getKey(): ?string
     {
         return $this->key;
     }
@@ -163,9 +209,26 @@ class Delivery
         return $this;
     }
 
+    /**
+     * @return int
+     */
+    public function getCount(): int
+    {
+        return $this->count;
+    }
 
     /**
-     * @return \DeliveriesCalculation\Entity\Dimensions
+     * @param int $count
+     * @return Delivery
+     */
+    public function setCount(int $count): Delivery
+    {
+        $this->count = $count;
+        return $this;
+    }
+
+    /**
+     * @return \DeliveriesCalculation\Entity\Request\Dimensions
      */
     public function getDimensions(): Dimensions
     {
@@ -191,10 +254,10 @@ class Delivery
     }
 
     /**
-     * @param \DeliveriesCalculation\Entity\Dimensions $dimensions
+     * @param \DeliveriesCalculation\Entity\Request\Dimensions $dimensions
      * @return Delivery
      */
-    public function setDimensions(\DeliveriesCalculation\Entity\Dimensions $dimensions): Delivery
+    public function setDimensions(\DeliveriesCalculation\Entity\Request\Dimensions $dimensions): Delivery
     {
         $this->dimensions = $dimensions;
         return $this;

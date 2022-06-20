@@ -2,17 +2,22 @@
 
 namespace DeliveriesCalculation\Factory;
 
-use DeliveriesCalculation\Entity\{Delivery, DeliveryResponse};
+use DeliveriesCalculation\Entity\{Request\Delivery, Response\DeliveryResponse};
 
 abstract class AbstractDelivery
 {
     /**
-     * @var \DeliveriesCalculation\Entity\Delivery
+     * @var \DeliveriesCalculation\Entity\Request\Delivery
      */
     private Delivery $delivery;
     private ?DeliveryResponse $result = null;
 
 
+    /**
+     * Возвращает массив с параметрами объекта
+     * @param $result
+     * @return array|mixed
+     */
     protected function parseField($result)
     {
         if (is_array($result)) {

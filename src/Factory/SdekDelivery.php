@@ -3,13 +3,13 @@
 namespace DeliveriesCalculation\Factory;
 
 use AntistressStore\CdekSDK2\CdekClientV2;
-use DeliveriesCalculation\{Constants,
+use DeliveriesCalculation\{
+    Constants,
     Exception\DeliveryException,
-    Entity\Delivery,
-    Entity\DeliveryResponse,
-    Logger\Log};
-
-
+    Entity\Request\Delivery,
+    Entity\Response\DeliveryResponse,
+    Logger\Log
+};
 
 class SdekDelivery extends AbstractDelivery implements DeliveryInterface
 {
@@ -29,24 +29,38 @@ class SdekDelivery extends AbstractDelivery implements DeliveryInterface
     private CdekClientV2 $client;
 
     /**
-     * @param \DeliveriesCalculation\Entity\Delivery $delivery Вся информация о посылке, откуда, куда, сколько, как и т.д.
+     * Инициализирует клиента \AntistressStore\CdekSDK2\CdekClientV2
+     * @param \DeliveriesCalculation\Entity\Request\Delivery $delivery Вся информация о посылке, откуда, куда, сколько, как и т.д.
      */
     public function __construct(Delivery $delivery)
     {
         $this->delivery = $delivery;
         if ($this->delivery->isActive()) {
-            $this->client = $this->delivery->getAccount() == 'TEST' ?
-                new CdekClientV2($this->delivery->getAccount()) :
-                new CdekClientV2($this->delivery->getAccount(), $this->delivery->getSecure());
+            try {
+                $this->client = $this->delivery->getAccount() == 'TEST' ?
+                    new CdekClientV2($this->delivery->getAccount()) :
+                    new CdekClientV2($this->delivery->getAccount(), $this->delivery->getSecure());
+
+            } catch (\Exception $e) {
+                (new Log($this::class))->addLogError(
+                    'Не удалось авторизоваться в системе доставки: ' . $this->delivery->getName(),
+                    (array)$e
+                );
+            }
         }
     }
 
 
+    /**
+     * При удачном исходе получает стоимость доставки
+     * @return $this
+     * @throws \DeliveriesCalculation\Exception\DeliveryException
+     */
     public function calculation(): SdekDelivery
     {
         if (!$this->delivery->isActive()) {
             (new Log($this::class))->addLogInfo(
-                Constants::SDEK_DELIVERY['name'] . ': ' . Constants::LOG_MESSAGE['NO_ACTIVE']
+                $this->delivery->getName() . ': ' . Constants::LOG_MESSAGE['NO_ACTIVE']
             );
             return $this;
         }
@@ -55,31 +69,46 @@ class SdekDelivery extends AbstractDelivery implements DeliveryInterface
         $tariff 		= new \AntistressStore\CdekSDK2\Entity\Requests\Tariff();
         $Location 		= new \AntistressStore\CdekSDK2\Entity\Requests\Location();
 
-        // Ставим пункт отправления
-        $tariff->setFromLocation(
-            $this->delivery->getToPointId() ?
-            $Location->withCode($this->delivery->getFromPointId()) :
-            $Location->withPostalCode($this->delivery->getFromPostalCode())
-        );
-        // Ставим пункт назначения
-        $tariff->setToLocation(
-            $this->delivery->getFromPointId() ?
-            $Location->withCode($this->delivery->getToPointId()) :
-            $Location->withPostalCode($this->delivery->getToPostalCode())
-        );
+        try {
+            // Ставим пункт отправления
+            $tariff->setFromLocation(
+                $this->delivery->getToPointId() ?
+                    $Location->withCode($this->delivery->getFromPointId()) :
+                    $Location->withPostalCode($this->delivery->getFromPostalCode())
+            );
+            // Ставим пункт назначения
+            $tariff->setToLocation(
+                $this->delivery->getFromPointId() ?
+                    $Location->withCode($this->delivery->getToPointId()) :
+                    $Location->withPostalCode($this->delivery->getToPostalCode())
+            );
 
-        // Ставим вес посылки
-        $tariff->setPackageWeight($this->delivery->getDimension('weight'));
+            // Ставим вес посылки
+            $tariff->setPackageWeight($this->delivery->getDimension('weight'));
 
-        $tariff
-            ->setType($this->type) // 1 - "интернет-магазин", 2 - "доставка"
-            ->addServices(['PART_DELIV']) //список сервис кодов -  \AntistressStore\CdekSDK2\Constants - SERVICE_CODES
-        ;
+            $tariff
+                ->setType($this->type) // 1 - "интернет-магазин", 2 - "доставка"
+                ->addServices(['PART_DELIV']) //список сервис кодов -  \AntistressStore\CdekSDK2\Constants - SERVICE_CODES
+            ;
 
-        // Получаем стоимость доставки для всех тарифов
-        $tariffList = $this->client->calculateTariffList($tariff);
-        $this->setResult($tariffList);
+            // Получаем стоимость доставки для всех тарифов
+            $tariffList = $this->client->calculateTariffList($tariff);
 
+        } catch (\Exception $e) {
+            (new Log($this::class))->addLogError(
+                Constants::ERRORS['ERROR_RESPONSE'] . $this->delivery->getName(),
+                (array)$e
+            );
+        }
+
+        if (empty($tariffList)) {
+            (new Log($this::class))->addLogInfo(
+                Constants::LOG_MESSAGE['NO_RESULT'] . $this->delivery->getName(),
+                $this->delivery->getFields()
+            );
+        } else {
+            $this->setResult($tariffList);
+        }
 
         return $this;
     }
@@ -95,25 +124,30 @@ class SdekDelivery extends AbstractDelivery implements DeliveryInterface
     }
 
 
+    /**
+     * Проверяет наличие необходимых параметров
+     * @return void
+     * @throws \DeliveriesCalculation\Exception\DeliveryException
+     */
     private function checkParameters(): void
     {
         if (!$this->delivery->getFromPointId() and !$this->delivery->getFromPostalCode()) {
             (new Log($this::class))->addLogError(
-                Constants::SDEK_DELIVERY['name'] . ': ' . Constants::ERRORS['NOT_FROM_POINT']
+                Constants::ERRORS['NOT_FROM_POINT'] . $this->delivery->getName()
             );
-            throw new DeliveryException(DeliveryException::getErrorMessage('NOT_FROM_POINT', Constants::SDEK_DELIVERY['name']));
+            throw new DeliveryException(DeliveryException::getErrorMessage('NOT_FROM_POINT', $this->delivery->getName()));
         }
         if (!$this->delivery->getToPointId() and !$this->delivery->getToPostalCode()) {
             (new Log($this::class))->addLogError(
-                Constants::SDEK_DELIVERY['name'] . ': ' . Constants::ERRORS['NOT_FROM_POINT']
+                Constants::ERRORS['NOT_TO_POINT'] . $this->delivery->getName()
             );
-            throw new DeliveryException(DeliveryException::getErrorMessage('NOT_TO_POINT', Constants::SDEK_DELIVERY['name']));
+            throw new DeliveryException(DeliveryException::getErrorMessage('NOT_TO_POINT', $this->delivery->getName()));
         }
         if (!$this->delivery->getDimension('weight')) {
             (new Log($this::class))->addLogError(
-                Constants::SDEK_DELIVERY['name'] . ': ' . Constants::ERRORS['NOT_FROM_POINT']
+                Constants::ERRORS['NOT_WEIGHT'] . $this->delivery->getName()
             );
-            throw new DeliveryException(DeliveryException::getErrorMessage('NOT_WEIGHT', Constants::SDEK_DELIVERY['name']));
+            throw new DeliveryException(DeliveryException::getErrorMessage('NOT_WEIGHT', $this->delivery->getName()));
         }
     }
 
@@ -143,15 +177,14 @@ class SdekDelivery extends AbstractDelivery implements DeliveryInterface
 
     /**
      * @param \AntistressStore\CdekSDK2\Entity\Responses\TariffListResponse $tariff
-     * @param array $tariffs
-     * @return array
+     * @return \DeliveriesCalculation\Entity\Response\DeliveryResponse
      */
     private function setTariffResult(\AntistressStore\CdekSDK2\Entity\Responses\TariffListResponse $tariff): DeliveryResponse
     {
         return new DeliveryResponse(
             [
                 'name' => $tariff->getTariffName(),
-                'description' => $tariff->getTariffDescription(),
+                'description' => $tariff->getTariffDescription() ?? $this->delivery->getDescription(),
                 'code' => $tariff->getTariffCode(),
                 'deliverySum' => round($tariff->getDeliverySum()),
                 'periodMin' => $tariff->getPeriodMin(),
@@ -175,6 +208,6 @@ class SdekDelivery extends AbstractDelivery implements DeliveryInterface
      */
     public function getResultToArray(): ?array
     {
-        return $this->parseField($this->result);
+        return $this->result ? $this->parseField($this->result) : null;
     }
 }

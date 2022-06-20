@@ -18,5 +18,9 @@
         "hflabs/dadata": ">=22.3.0",
         "wildtuna/boxberry-sdk": ">=0.8.7",
         "monolog/monolog": ">=2.7.0"
+
+    },
+    "require-dev": {
+        "chessterrdev/ozonrocket-sdk": "dev-develop"
     }
 }

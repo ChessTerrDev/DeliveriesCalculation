@@ -1,6 +1,6 @@
 <?php
 
-namespace DeliveriesCalculation\Entity;
+namespace DeliveriesCalculation\Entity\Request;
 
 class Dimensions
 {

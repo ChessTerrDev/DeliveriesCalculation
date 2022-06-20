@@ -2,15 +2,14 @@
 
 namespace DeliveriesCalculation\Factory;
 
-use WildTuna\BoxberrySdk\{Client, Entity\CalculateParams};
+use WildTuna\BoxberrySdk\{Client, Entity\CalculateParams, Exception\BoxBerryException};
 use DeliveriesCalculation\{
     Constants,
-    Entity\Delivery,
-    Entity\DeliveryResponse,
+    Entity\Request\Delivery,
+    Entity\Response\DeliveryResponse,
     Exception\DeliveryException,
     Logger\Log
 };
-
 
 class BoxberryDelivery extends AbstractDelivery implements DeliveryInterface
 {
@@ -21,13 +20,21 @@ class BoxberryDelivery extends AbstractDelivery implements DeliveryInterface
         $this->delivery = $delivery;
 
         if ($this->delivery->isActive() and $this->delivery->getToken()) {
-            $this->client = new Client(120, 'https://api.boxberry.ru/json.php');
-            $this->client->setToken('main', $this->delivery->getToken());
+            try {
+                $this->client = new Client(120, 'https://api.boxberry.ru/json.php');
+                $this->client->setToken('main', $this->delivery->getToken());
+            } catch (\Exception $e) {
+                (new Log($this::class))->addLogError(
+                    'Не удалось авторизоваться в системе доставки: ' . $this->delivery->getName(),
+                    (array)$e
+                );
+            }
         }
-
-
     }
 
+    /**
+     * @throws \DeliveriesCalculation\Exception\DeliveryException
+     */
     public function calculation(): DeliveryInterface
     {
         if (!$this->delivery->isActive()) {
@@ -43,7 +50,30 @@ class BoxberryDelivery extends AbstractDelivery implements DeliveryInterface
         $calcParams->setPvz($this->delivery->getToPointId());
         $calcParams->setAmount($this->delivery->getPackagePrice());
 
-        $result = $this->client->calcTariff($calcParams);
+        if ($this->delivery->getFromPointId())
+            $calcParams->setTargetStart($this->delivery->getFromPointId());
+
+        if ($this->delivery->getDimension('height'))
+            $calcParams->setHeight($this->delivery->getDimension('height'));
+
+        if ($this->delivery->getDimension('width'))
+            $calcParams->setWidth($this->delivery->getDimension('width'));
+
+        if ($this->delivery->getDimension('length'))
+            $calcParams->setDepth($this->delivery->getDimension('length'));
+
+        if ($this->delivery->getToPostalCode())
+            $calcParams->setZip($this->delivery->getToPostalCode());
+
+        try {
+            $result = $this->client->calcTariff($calcParams);
+
+        } catch (BoxBerryException | \Exception $e) {
+            (new Log($this::class))->addLogError(
+                Constants::ERRORS['ERROR_RESPONSE'] . $this->delivery->getName(),
+                (array)$e
+            );
+        }
 
         if (empty($result)) {
             (new Log($this::class))->addLogInfo(
@@ -80,7 +110,7 @@ class BoxberryDelivery extends AbstractDelivery implements DeliveryInterface
 
     public function setResult(object|array $result): void
     {
-        $this->result = new DeliveryResponse(
+        $this->result = [new DeliveryResponse(
             [
                 'name' => $this->delivery->getName(),
                 'description' => $this->delivery->getDescription(),
@@ -88,14 +118,14 @@ class BoxberryDelivery extends AbstractDelivery implements DeliveryInterface
                 'periodMin' => $result->getDeliveryPeriod(),
                 'periodMax' => $result->getDeliveryPeriod()
             ]
-        );
+        )];
     }
 
     /**
      * Возвращает результат в виде объекта DeliveryResponse
-     * @return \DeliveriesCalculation\Entity\DeliveryResponse|null
+     * @return array | DeliveryResponse | null
      */
-    public function getResult(): ?DeliveryResponse
+    public function getResult(): array | DeliveryResponse | null
     {
         return $this->result;
     }
@@ -106,6 +136,6 @@ class BoxberryDelivery extends AbstractDelivery implements DeliveryInterface
      */
     public function getResultToArray(): ?array
     {
-        return $this->parseField($this->result);
+        return $this->result ? $this->parseField($this->result) : null;
     }
 }

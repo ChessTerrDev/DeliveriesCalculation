@@ -2,7 +2,7 @@
 
 namespace DeliveriesCalculation\Factory;
 
-use DeliveriesCalculation\Entity\Delivery;
+use DeliveriesCalculation\Entity\Request\Delivery;
 
 class DeliveryFactory
 {
@@ -19,5 +19,10 @@ class DeliveryFactory
     public static function boxberryDelivery(Delivery $delivery): DeliveryInterface
     {
         return new BoxberryDelivery($delivery);
+    }
+
+    public static function ozonRocketDelivery(Delivery $delivery): DeliveryInterface
+    {
+        return new OzonRocketDelivery($delivery);
     }
 }

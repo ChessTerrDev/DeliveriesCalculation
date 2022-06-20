@@ -2,12 +2,12 @@
 
 namespace DeliveriesCalculation\Factory;
 
-use DeliveriesCalculation\Entity\{Delivery, DeliveryResponse};
+use DeliveriesCalculation\Entity\{Request\Delivery, Response\DeliveryResponse};
 
 interface DeliveryInterface
 {
     /**
-     * @param \DeliveriesCalculation\Entity\Delivery $delivery Вся информация о посылке, откуда, куда, сколько, как и т.д.
+     * @param \DeliveriesCalculation\Entity\Request\Delivery $delivery Вся информация о посылке, откуда, куда, сколько, как и т.д.
      */
     public function __construct(Delivery $delivery);
 
@@ -26,7 +26,7 @@ interface DeliveryInterface
 
     /**
      * Возвращает результат в виде объекта DeliveryResponse
-     * @return \DeliveriesCalculation\Entity\DeliveryResponse|null
+     * @return \DeliveriesCalculation\Entity\Response\DeliveryResponse|null
      */
     public function getResult();
 
