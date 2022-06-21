@@ -6,8 +6,8 @@ use DeliveriesCalculation\Entity\AbstractDeliveryEntity;
 
 class Delivery  extends AbstractDeliveryEntity
 {
-    private string $name;
-    private string $description;
+    private string $name = '';
+    private string $description = '';
 
     private bool $active;
     private ?string $account = null;

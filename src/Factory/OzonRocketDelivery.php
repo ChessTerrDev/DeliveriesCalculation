@@ -86,7 +86,7 @@ class OzonRocketDelivery extends AbstractDelivery implements DeliveryInterface
         try {
             $result = $this->client->deliveryCalculateInformation($ozonDelivery);
 
-            /*$result =  [
+            $result =  [
                 "deliveryInfos" => [
                     [
                         "deliveryType" => "ExpressCourier",
@@ -113,7 +113,7 @@ class OzonRocketDelivery extends AbstractDelivery implements DeliveryInterface
                         "isAviaDeliveryVariant" => true
                     ]
                 ]
-            ];*/
+            ];
 
             if (isset($result['deliveryInfos']) && !empty($result['deliveryInfos'])) {
 

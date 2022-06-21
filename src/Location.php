@@ -14,7 +14,8 @@ class Location
         $this->ip = $ip;
         if (empty($this->ip) && !empty($_SERVER['REMOTE_ADDR'])) $this->ip = $_SERVER['REMOTE_ADDR'];
 
-        $this->geoData = Session::getFromSession('GEO_DATA');
+        if (Constants::LOCATION['SAVE_IN_SESSION'])
+            $this->geoData = Session::getFromSession('GEO_DATA');
 
         if (!empty($this->ip) && $this->geoData == null) {
             $this->geoData = $this->getGeodataByDadata($ip);
